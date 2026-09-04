@@ -18,7 +18,7 @@ def _find_latent_files():
 
 
 class H3LoadLatent:
-    """Read back a latent written by Save H3 AV Latent."""
+    """Read back a latent written by Save MiniMax H3 AV Latent."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -28,15 +28,15 @@ class H3LoadLatent:
     FUNCTION = "load"
     CATEGORY = "latent/minimax_h3"
     DESCRIPTION = (
-        "Load an H3 AV latent from disk. Feed straight into a sampler or the "
-        "MMH3UltimateUpscale latent input."
+        "Load a MiniMax H3 AV latent from disk. Feed straight into a sampler or "
+        "the MMH3UltimateUpscale latent input."
     )
 
     def load(self, latent_file):
         path = os.path.join(folder_paths.get_output_directory(), latent_file)
         payload = torch.load(path, map_location="cpu", weights_only=False)
         latent = read_payload(payload, latent_file)
-        print(f"[H3-LatentIO] loaded {path} {describe(latent)}")
+        print(f"[MiniMax H3 LatentIO] loaded {path} {describe(latent)}")
         return (latent,)
 
     @classmethod

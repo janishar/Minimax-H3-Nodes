@@ -1,6 +1,6 @@
 """Serialisation helpers for MiniMax H3 AV latents.
 
-H3's latent carries video and audio in a single custom ``NestedTensor`` container
+MiniMax H3's latent carries video and audio in a single custom ``NestedTensor`` container
 class. It is not a ``torch.Tensor`` subclass and has no ``.contiguous()``, which
 is why core ``SaveLatent`` raises AttributeError on it. It also cannot be rebuilt
 with ``torch.nested.nested_tensor``, since that requires every component to share
@@ -65,10 +65,10 @@ def build_payload(samples):
 
 def read_payload(payload, source=""):
     if not isinstance(payload, dict) or payload.get("format") != FORMAT:
-        raise ValueError(f"{source or 'file'} is not an H3 latent file")
+        raise ValueError(f"{source or 'file'} is not a MiniMax H3 latent file")
     if payload.get("version", 0) > VERSION:
         raise ValueError(
-            f"{source or 'file'} was written by a newer H3-LatentIO "
+            f"{source or 'file'} was written by a newer MiniMax H3 LatentIO "
             f"(v{payload['version']}, this build reads v{VERSION})"
         )
     return payload["latent"]
