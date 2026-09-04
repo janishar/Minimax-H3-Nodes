@@ -15,14 +15,14 @@ class H3SaveLatent:
         return {
             "required": {
                 "samples": ("LATENT",),
-                "filename_prefix": ("STRING", {"default": "h3/clip"}),
+                "filename_prefix": ("STRING", {"default": "minimax_h3/clip"}),
             }
         }
 
     RETURN_TYPES = ()
     FUNCTION = "save"
     OUTPUT_NODE = True
-    CATEGORY = "latent/h3"
+    CATEGORY = "latent/minimax_h3"
     DESCRIPTION = (
         "Save an H3 AV latent, keeping the video and audio streams intact. "
         "Use instead of core SaveLatent, which cannot handle H3's nested latent."

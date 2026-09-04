@@ -26,7 +26,7 @@ class H3LoadLatent:
 
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "load"
-    CATEGORY = "latent/h3"
+    CATEGORY = "latent/minimax_h3"
     DESCRIPTION = (
         "Load an H3 AV latent from disk. Feed straight into a sampler or the "
         "MMH3UltimateUpscale latent input."

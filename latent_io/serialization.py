@@ -12,9 +12,9 @@ on load from the same ComfyUI install.
 
 import torch
 
-FORMAT = "h3latent"
+FORMAT = "minimaxh3latent"
 VERSION = 1
-EXT = ".h3latent"
+EXT = ".minimaxh3latent"
 
 
 def describe(samples):

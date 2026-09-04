@@ -1,4 +1,4 @@
-"""ComfyUI--Minimax_H3
+"""ComfyUI-Minimax_H3
 
 Core SaveLatent assumes the latent is a plain torch.Tensor and calls
 .contiguous() on it. H3's latent is a custom NestedTensor container holding the

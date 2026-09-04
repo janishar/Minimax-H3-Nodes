@@ -26,11 +26,11 @@ No dependencies beyond ComfyUI itself. Restart ComfyUI.
 
 | Node | Category | In / Out |
 |---|---|---|
-| Save H3 AV Latent | `latent/h3` | `LATENT` in, writes `.h3latent` |
-| Load H3 AV Latent | `latent/h3` | picks a file, `LATENT` out |
+| Save H3 AV Latent | `latent/minimax_h3` | `LATENT` in, writes `.minimaxh3latent` |
+| Load H3 AV Latent | `latent/minimax_h3` | picks a file, `LATENT` out |
 
 Files are written under the ComfyUI output directory using `filename_prefix`
-(default `h3/clip`), auto-numbered. Roughly 0.5 MB per 124-frame 864x480 clip.
+(default `minimax_h3`), auto-numbered. Roughly 0.5 MB per 124-frame 864x480 clip.
 
 ## Typical use
 
