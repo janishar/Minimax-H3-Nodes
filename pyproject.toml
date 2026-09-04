@@ -1,0 +1,10 @@
+[project]
+name = "comfyui-h3-nodes"
+version = "1.0.0"
+description = "various nodes to be used in ComfyUI"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.comfy]
+DisplayName = "ComfyUI Minimax H3 Nodes"
+PublisherId = "Janishar Ali"
