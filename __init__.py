@@ -12,6 +12,7 @@ latent with it, and marks those positions as never-denoised so motion and
 audio continue across the join with no VAE decode/re-encode in between.
 """
 
+from .gates import H3Gate, H3GateAB
 from .latent_io import H3CombineLatents, H3LoadLatent, H3SaveLatent
 from .video_extend import H3InspectLatent, H3MotionContext, H3SliceTail, H3TrimLeading
 
@@ -23,6 +24,8 @@ NODE_CLASS_MAPPINGS = {
     "H3SliceTail": H3SliceTail,
     "H3MotionContext": H3MotionContext,
     "H3TrimLeading": H3TrimLeading,
+    "H3Gate": H3Gate,
+    "H3GateAB": H3GateAB,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -33,6 +36,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "H3SliceTail": "Slice MiniMax H3 AV Latent Tail",
     "H3MotionContext": "MiniMax H3 Motion Context",
     "H3TrimLeading": "Trim Leading Frames (MiniMax H3)",
+    "H3Gate": "Gate (skip branch)",
+    "H3GateAB": "Gate A/B (pick branch)",
 }
 
 WEB_DIRECTORY = "./web"

@@ -1,0 +1,208 @@
+"""Standalone tests for the gates package -- no ComfyUI or torch required.
+
+Stubs comfy_execution.graph with a fake ExecutionBlocker before importing
+gate.py, the same way test_video_extend.py stubs folder_paths. Both stubs
+are needed here even though gates/ itself touches neither: importing
+`PKG.gates.any_type` first runs the top-level package's __init__.py, which
+imports latent_io (needs folder_paths) -- see that file's module docstring.
+"""
+
+import importlib
+import sys
+import types
+from pathlib import Path
+
+if "folder_paths" not in sys.modules:
+    sys.modules["folder_paths"] = types.ModuleType("folder_paths")
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT.parent) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT.parent))
+
+PKG = REPO_ROOT.name  # "Minimax-H3-Nodes" -- importlib accepts this even though it's not an identifier
+
+
+class FakeExecutionBlocker:
+    def __init__(self, message):
+        self.message = message
+
+
+def _stub_comfy_execution_graph():
+    graph_mod = types.ModuleType("comfy_execution.graph")
+    graph_mod.ExecutionBlocker = FakeExecutionBlocker
+    package_mod = types.ModuleType("comfy_execution")
+    package_mod.graph = graph_mod
+    sys.modules["comfy_execution"] = package_mod
+    sys.modules["comfy_execution.graph"] = graph_mod
+
+
+_stub_comfy_execution_graph()
+
+any_type_mod = importlib.import_module(f"{PKG}.gates.any_type")
+gate_mod = importlib.import_module(f"{PKG}.gates.gate")
+gate_ab_mod = importlib.import_module(f"{PKG}.gates.gate_ab")
+
+ANY = any_type_mod.ANY
+H3Gate = gate_mod.H3Gate
+H3GateAB = gate_ab_mod.H3GateAB
+
+
+passed = 0
+failed = 0
+
+
+def check(name, condition):
+    global passed, failed
+    if condition:
+        passed += 1
+        print(f"PASS {name}")
+    else:
+        failed += 1
+        print(f"FAIL {name}")
+
+
+def check_raises(name, fn, exc_type=ValueError):
+    global passed, failed
+    try:
+        fn()
+    except exc_type:
+        passed += 1
+        print(f"PASS {name}")
+    else:
+        failed += 1
+        print(f"FAIL {name} (expected {exc_type.__name__}, nothing raised)")
+
+
+# ---------------------------------------------------------------------------
+# any_type
+# ---------------------------------------------------------------------------
+
+def test_any_type():
+    check("ANY != 'LATENT' is False (wildcard accepts LATENT)", not (ANY != "LATENT"))
+    check("ANY != 'IMAGE' is False (wildcard accepts IMAGE)", not (ANY != "IMAGE"))
+    check("ANY != 123 is False (wildcard accepts non-string values too)", not (ANY != 123))
+    check("ANY != None is False (wildcard compares unequal to nothing)", not (ANY != None))
+
+
+# ---------------------------------------------------------------------------
+# H3Gate
+# ---------------------------------------------------------------------------
+
+def test_gate_check_lazy_status():
+    gate = H3Gate()
+    check(
+        "H3Gate.check_lazy_status requests value when enabled",
+        gate.check_lazy_status(enabled=True, value=None) == ["value"],
+    )
+    check(
+        "H3Gate.check_lazy_status requests nothing when disabled",
+        gate.check_lazy_status(enabled=False, value=None) == [],
+    )
+    check(
+        "H3Gate.check_lazy_status requests nothing once value is resolved",
+        gate.check_lazy_status(enabled=True, value="already-resolved") == [],
+    )
+
+
+def test_gate_enabled_passthrough_identity():
+    sentinel = object()
+    out, = H3Gate().gate(enabled=True, value=sentinel)
+    check("H3Gate enabled path returns the identical object (is, not ==)", out is sentinel)
+
+
+def test_gate_disabled_returns_blocker():
+    out, = H3Gate().gate(enabled=False, value=None)
+    check("H3Gate disabled path returns an ExecutionBlocker", isinstance(out, FakeExecutionBlocker))
+    check("H3Gate disabled path blocks silently (message is None)", out.message is None)
+
+
+def test_gate_disabled_never_touches_an_unconnected_value():
+    # value omitted entirely, as ComfyUI would for an unconnected optional lazy input
+    out, = H3Gate().gate(enabled=False)
+    check("H3Gate disabled with no value connected still returns a blocker", isinstance(out, FakeExecutionBlocker))
+
+
+def test_gate_missing_execution_blocker_raises():
+    original = gate_mod.ExecutionBlocker
+    gate_mod.ExecutionBlocker = None
+    try:
+        check_raises(
+            "H3Gate disabled without ExecutionBlocker available raises a clear error",
+            lambda: H3Gate().gate(enabled=False, value=None),
+            RuntimeError,
+        )
+    finally:
+        gate_mod.ExecutionBlocker = original
+
+
+# ---------------------------------------------------------------------------
+# H3GateAB
+# ---------------------------------------------------------------------------
+
+def test_gate_ab_check_lazy_status_requests_only_selected_side():
+    gate_ab = H3GateAB()
+    check(
+        "H3GateAB requests only 'a' when use_a is True",
+        gate_ab.check_lazy_status(use_a=True, a=None, b=None) == ["a"],
+    )
+    check(
+        "H3GateAB requests only 'b' when use_a is False",
+        gate_ab.check_lazy_status(use_a=False, a=None, b=None) == ["b"],
+    )
+    check(
+        "H3GateAB requests nothing once the selected side is resolved",
+        gate_ab.check_lazy_status(use_a=True, a="resolved", b=None) == [],
+    )
+
+
+def test_gate_ab_selects_a():
+    sentinel = object()
+    out, = H3GateAB().select(use_a=True, a=sentinel, b=object())
+    check("H3GateAB use_a=True returns 'a' unchanged (is, not ==)", out is sentinel)
+
+
+def test_gate_ab_selects_b():
+    sentinel = object()
+    out, = H3GateAB().select(use_a=False, a=object(), b=sentinel)
+    check("H3GateAB use_a=False returns 'b' unchanged (is, not ==)", out is sentinel)
+
+
+def test_gate_ab_raises_on_unconnected_selection():
+    check_raises(
+        "H3GateAB raises when 'a' is selected but not connected (explicit None)",
+        lambda: H3GateAB().select(use_a=True, a=None, b=object()),
+    )
+    check_raises(
+        "H3GateAB raises when 'a' is selected but never wired at all (omitted)",
+        lambda: H3GateAB().select(use_a=True, b=object()),
+    )
+    check_raises(
+        "H3GateAB raises when 'b' is selected but not connected",
+        lambda: H3GateAB().select(use_a=False, a=object(), b=None),
+    )
+
+
+def test_gate_ab_does_not_fall_back_to_the_other_branch():
+    # 'b' is a perfectly good value, but use_a selects 'a', which isn't connected --
+    # this must raise, never silently return b.
+    check_raises(
+        "H3GateAB does not silently fall back to the unselected branch",
+        lambda: H3GateAB().select(use_a=True, a=None, b="a real value"),
+    )
+
+
+if __name__ == "__main__":
+    test_any_type()
+    test_gate_check_lazy_status()
+    test_gate_enabled_passthrough_identity()
+    test_gate_disabled_returns_blocker()
+    test_gate_disabled_never_touches_an_unconnected_value()
+    test_gate_missing_execution_blocker_raises()
+    test_gate_ab_check_lazy_status_requests_only_selected_side()
+    test_gate_ab_selects_a()
+    test_gate_ab_selects_b()
+    test_gate_ab_raises_on_unconnected_selection()
+    test_gate_ab_does_not_fall_back_to_the_other_branch()
+
+    print(f"\n{passed} passed, {failed} failed")
+    sys.exit(1 if failed else 0)
