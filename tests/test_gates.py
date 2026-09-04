@@ -41,10 +41,12 @@ _stub_comfy_execution_graph()
 any_type_mod = importlib.import_module(f"{PKG}.gates.any_type")
 gate_mod = importlib.import_module(f"{PKG}.gates.gate")
 gate_ab_mod = importlib.import_module(f"{PKG}.gates.gate_ab")
+gate_switch_mod = importlib.import_module(f"{PKG}.gates.gate_switch")
 
 ANY = any_type_mod.ANY
 H3Gate = gate_mod.H3Gate
 H3GateAB = gate_ab_mod.H3GateAB
+H3GateSwitch = gate_switch_mod.H3GateSwitch
 
 
 passed = 0
@@ -191,6 +193,61 @@ def test_gate_ab_does_not_fall_back_to_the_other_branch():
     )
 
 
+# ---------------------------------------------------------------------------
+# H3GateSwitch
+# ---------------------------------------------------------------------------
+
+def test_gate_switch_check_lazy_status_requests_only_selected_index():
+    switch = H3GateSwitch()
+    check(
+        "H3GateSwitch requests only 'value_1' when select=1 and it's unresolved",
+        switch.check_lazy_status(select=1, value_1=None, value_2=None) == ["value_1"],
+    )
+    check(
+        "H3GateSwitch requests only 'value_3' when select=3 and it's unresolved",
+        switch.check_lazy_status(select=3, value_1=None, value_3=None) == ["value_3"],
+    )
+    check(
+        "H3GateSwitch requests nothing once the selected index is resolved",
+        switch.check_lazy_status(select=1, value_1="resolved", value_2=None) == [],
+    )
+    check(
+        "H3GateSwitch requests nothing for a select index with no matching key at all",
+        switch.check_lazy_status(select=9, value_1=None, value_2=None) == [],
+    )
+
+
+def test_gate_switch_selects_by_index():
+    sentinel = object()
+    out, = H3GateSwitch().select_branch(select=1, value_1=sentinel, value_2=object())
+    check("H3GateSwitch select=1 returns 'value_1' unchanged (is, not ==)", out is sentinel)
+
+    out, = H3GateSwitch().select_branch(select=3, value_1=object(), value_2=object(), value_3=sentinel)
+    check("H3GateSwitch select=3 returns 'value_3' unchanged (is, not ==)", out is sentinel)
+
+
+def test_gate_switch_raises_on_unconnected_selection():
+    check_raises(
+        "H3GateSwitch raises when the selected index isn't connected (explicit None)",
+        lambda: H3GateSwitch().select_branch(select=2, value_1=object(), value_2=None),
+    )
+    check_raises(
+        "H3GateSwitch raises when the selected index was never wired at all (omitted)",
+        lambda: H3GateSwitch().select_branch(select=1, value_2=object()),
+    )
+    check_raises(
+        "H3GateSwitch raises when select points past every wired index",
+        lambda: H3GateSwitch().select_branch(select=9, value_1=object(), value_2=object()),
+    )
+
+
+def test_gate_switch_does_not_fall_back_to_another_branch():
+    check_raises(
+        "H3GateSwitch does not silently fall back to an unselected branch",
+        lambda: H3GateSwitch().select_branch(select=1, value_1=None, value_2="a real value"),
+    )
+
+
 if __name__ == "__main__":
     test_any_type()
     test_gate_check_lazy_status()
@@ -203,6 +260,10 @@ if __name__ == "__main__":
     test_gate_ab_selects_b()
     test_gate_ab_raises_on_unconnected_selection()
     test_gate_ab_does_not_fall_back_to_the_other_branch()
+    test_gate_switch_check_lazy_status_requests_only_selected_index()
+    test_gate_switch_selects_by_index()
+    test_gate_switch_raises_on_unconnected_selection()
+    test_gate_switch_does_not_fall_back_to_another_branch()
 
     print(f"\n{passed} passed, {failed} failed")
     sys.exit(1 if failed else 0)

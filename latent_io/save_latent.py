@@ -19,13 +19,16 @@ class H3SaveLatent:
             }
         }
 
-    RETURN_TYPES = ()
+    RETURN_TYPES = ("LATENT",)
+    RETURN_NAMES = ("samples",)
     FUNCTION = "save"
     OUTPUT_NODE = True
     CATEGORY = "latent/minimax_h3"
     DESCRIPTION = (
         "Save a MiniMax H3 AV latent, keeping the video and audio streams intact. "
-        "Use instead of core SaveLatent, which cannot handle MiniMax H3's nested latent."
+        "Use instead of core SaveLatent, which cannot handle MiniMax H3's nested latent. "
+        "Passes samples through unchanged so saving can sit inline in a chain instead "
+        "of needing a separate tap."
     )
 
     def save(self, samples, filename_prefix):
@@ -44,4 +47,4 @@ class H3SaveLatent:
         print(
             f"[MiniMax H3 LatentIO] saved {path} ({megabytes:.2f} MB) {describe(samples)}"
         )
-        return {"ui": {"text": [os.path.join(subfolder, filename)]}}
+        return {"ui": {"text": [os.path.join(subfolder, filename)]}, "result": (samples,)}
