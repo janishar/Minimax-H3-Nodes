@@ -12,12 +12,13 @@ latent with it, and marks those positions as never-denoised so motion and
 audio continue across the join with no VAE decode/re-encode in between.
 """
 
-from .latent_io import H3LoadLatent, H3SaveLatent
+from .latent_io import H3CombineLatents, H3LoadLatent, H3SaveLatent
 from .video_extend import H3InspectLatent, H3MotionContext, H3SliceTail, H3TrimLeading
 
 NODE_CLASS_MAPPINGS = {
     "H3SaveLatent": H3SaveLatent,
     "H3LoadLatent": H3LoadLatent,
+    "H3CombineLatents": H3CombineLatents,
     "H3InspectLatent": H3InspectLatent,
     "H3SliceTail": H3SliceTail,
     "H3MotionContext": H3MotionContext,
@@ -27,11 +28,14 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "H3SaveLatent": "Save MiniMax H3 AV Latent",
     "H3LoadLatent": "Load MiniMax H3 AV Latent",
+    "H3CombineLatents": "Combine MiniMax H3 AV Latents",
     "H3InspectLatent": "Inspect MiniMax H3 AV Latent",
     "H3SliceTail": "Slice MiniMax H3 AV Latent Tail",
     "H3MotionContext": "MiniMax H3 Motion Context",
     "H3TrimLeading": "Trim Leading Frames (MiniMax H3)",
 }
 
+WEB_DIRECTORY = "./web"
+
 __version__ = "1.0.0"
-__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
+__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]

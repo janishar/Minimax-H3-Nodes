@@ -28,6 +28,13 @@ No dependencies beyond ComfyUI itself. Restart ComfyUI.
 |---|---|---|
 | Save MiniMax H3 AV Latent | `latent/minimax_h3` | `LATENT` in, writes `.minimaxh3latent` |
 | Load MiniMax H3 AV Latent | `latent/minimax_h3` | picks a file, `LATENT` out |
+| Combine MiniMax H3 AV Latents | `latent/minimax_h3` | 2+ `LATENT` in (grows dynamically), one batched `LATENT` out |
+
+`H3CombineLatents` batches any number of latents along the batch dimension —
+video and audio streams are concatenated separately, so every input must share
+the same frame count, height, and width. Connecting the last `latent_N` socket
+grows another; it also works on plain single-tensor latents, like core
+`LatentBatch` but for N inputs.
 
 Files are written under the ComfyUI output directory, in the `latent/` subfolder,
 using `filename_prefix` (default `latent/minimax_h3`), auto-numbered — e.g.
@@ -58,12 +65,15 @@ stop loading. Keep the decoded video for anything you need long term.
 
 ```
 Minimax-H3-Nodes/
-├── __init__.py              # NODE_CLASS_MAPPINGS / NODE_DISPLAY_NAME_MAPPINGS
+├── __init__.py              # NODE_CLASS_MAPPINGS / NODE_DISPLAY_NAME_MAPPINGS / WEB_DIRECTORY
 ├── latent_io/
 │   ├── __init__.py          # re-exports the node classes
 │   ├── save_latent.py       # H3SaveLatent
 │   ├── load_latent.py       # H3LoadLatent
+│   ├── combine_latents.py   # H3CombineLatents
 │   └── serialization.py     # shared encode/describe helpers
+├── web/
+│   └── combine_latents.js   # grows/prunes H3CombineLatents' input sockets
 ├── pyproject.toml           # [tool.comfy] block, no dependencies
 ├── README.md
 └── .gitignore
