@@ -42,11 +42,13 @@ any_type_mod = importlib.import_module(f"{PKG}.gates.any_type")
 gate_mod = importlib.import_module(f"{PKG}.gates.gate")
 gate_ab_mod = importlib.import_module(f"{PKG}.gates.gate_ab")
 gate_switch_mod = importlib.import_module(f"{PKG}.gates.gate_switch")
+gate_route_mod = importlib.import_module(f"{PKG}.gates.gate_route")
 
 ANY = any_type_mod.ANY
 H3Gate = gate_mod.H3Gate
 H3GateAB = gate_ab_mod.H3GateAB
 H3GateSwitch = gate_switch_mod.H3GateSwitch
+H3GateRoute = gate_route_mod.H3GateRoute
 
 
 passed = 0
@@ -248,6 +250,73 @@ def test_gate_switch_does_not_fall_back_to_another_branch():
     )
 
 
+# ---------------------------------------------------------------------------
+# H3GateRoute
+# ---------------------------------------------------------------------------
+
+def test_gate_route_check_lazy_status_requests_only_selected_side():
+    route = H3GateRoute()
+    check(
+        "H3GateRoute requests only 'a' when use_a is True",
+        route.check_lazy_status(use_a=True, a=None, b=None) == ["a"],
+    )
+    check(
+        "H3GateRoute requests only 'b' when use_a is False",
+        route.check_lazy_status(use_a=False, a=None, b=None) == ["b"],
+    )
+    check(
+        "H3GateRoute requests nothing once the selected side is resolved",
+        route.check_lazy_status(use_a=False, a=None, b="resolved") == [],
+    )
+
+
+def test_gate_route_blocks_the_unselected_output():
+    sentinel = object()
+    out_a, out_b = H3GateRoute().route(use_a=True, a=sentinel, b=None)
+    check("H3GateRoute use_a=True passes 'a' through unchanged (is, not ==)", out_a is sentinel)
+    check("H3GateRoute use_a=True blocks output 'b'", isinstance(out_b, FakeExecutionBlocker))
+
+    out_a, out_b = H3GateRoute().route(use_a=False, a=None, b=sentinel)
+    check("H3GateRoute use_a=False passes 'b' through unchanged (is, not ==)", out_b is sentinel)
+    check("H3GateRoute use_a=False blocks output 'a'", isinstance(out_a, FakeExecutionBlocker))
+
+
+def test_gate_route_blocks_silently():
+    _, out_b = H3GateRoute().route(use_a=True, a=object(), b=None)
+    check("H3GateRoute blocks silently (message is None)", out_b.message is None)
+
+
+def test_gate_route_raises_on_unconnected_selection():
+    check_raises(
+        "H3GateRoute raises when 'a' is selected but not connected (explicit None)",
+        lambda: H3GateRoute().route(use_a=True, a=None, b=object()),
+    )
+    check_raises(
+        "H3GateRoute raises when 'b' is selected but never wired at all (omitted)",
+        lambda: H3GateRoute().route(use_a=False, a=object()),
+    )
+
+
+def test_gate_route_does_not_fall_back_to_the_other_branch():
+    check_raises(
+        "H3GateRoute does not silently route the unselected branch instead",
+        lambda: H3GateRoute().route(use_a=True, a=None, b="a real value"),
+    )
+
+
+def test_gate_route_missing_execution_blocker_raises():
+    original = gate_route_mod.ExecutionBlocker
+    gate_route_mod.ExecutionBlocker = None
+    try:
+        check_raises(
+            "H3GateRoute without ExecutionBlocker available raises a clear error",
+            lambda: H3GateRoute().route(use_a=True, a=object(), b=None),
+            RuntimeError,
+        )
+    finally:
+        gate_route_mod.ExecutionBlocker = original
+
+
 if __name__ == "__main__":
     test_any_type()
     test_gate_check_lazy_status()
@@ -264,6 +333,12 @@ if __name__ == "__main__":
     test_gate_switch_selects_by_index()
     test_gate_switch_raises_on_unconnected_selection()
     test_gate_switch_does_not_fall_back_to_another_branch()
+    test_gate_route_check_lazy_status_requests_only_selected_side()
+    test_gate_route_blocks_the_unselected_output()
+    test_gate_route_blocks_silently()
+    test_gate_route_raises_on_unconnected_selection()
+    test_gate_route_does_not_fall_back_to_the_other_branch()
+    test_gate_route_missing_execution_blocker_raises()
 
     print(f"\n{passed} passed, {failed} failed")
     sys.exit(1 if failed else 0)

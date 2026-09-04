@@ -80,6 +80,41 @@ the last `value_N` socket adds a fresh empty one after it, and disconnecting
 prunes back down to two empty trailing sockets. Use this instead of
 `H3GateAB` when a branch needs more than two choices.
 
+### H3GateRoute -- "Gate Route (pick branch to run)"
+
+A two-way switch with *two outputs*: `use_a` picks a side, that side's value
+passes through to the output of the same name, and the other output is an
+`ExecutionBlocker`. Only the selected side's input is ever evaluated, so the
+unselected branch is cut off at both ends -- nothing above it runs and
+nothing below it runs.
+
+Use this instead of `H3GateAB` when the two branches end in *different*
+output nodes. See "Why a gate after an output node does nothing" below --
+`H3GateAB` has a single output, so it can only choose between two results
+that have both already been produced.
+
+Two `H3Gate` nodes with opposite toggles do the same job. This is one switch
+rather than two, so it cannot be left half-flipped, running both branches or
+neither.
+
+## Why a gate after an output node does nothing
+
+ComfyUI does not start from "the end of the graph." It collects *every* node
+with `OUTPUT_NODE = True` and makes each one an execution root, then walks
+backward from all of them (`validate_prompt` in ComfyUI's `execution.py`:
+`if class_.OUTPUT_NODE is True: outputs.add(x)`).
+
+So a workflow with two save nodes has two roots, and both of their branches
+run on every queue -- whether or not anything consumes their outputs. A gate
+placed *downstream* of both cannot prevent that: by the time it evaluates,
+both branches have already been executed, and it is only choosing which
+finished result to forward.
+
+The gate has to sit *upstream* of the output node instead. Anything that
+receives an `ExecutionBlocker` on an input is skipped, output nodes included,
+and blockers propagate down the chain -- so one gate above a branch removes
+the save node at the bottom of it too.
+
 ## Wildcard typing
 
 Both nodes accept and return `ANY` (`gates/any_type.py`) -- a string
@@ -93,7 +128,7 @@ through a socket. One gate works for any branch, not just latents.
 |---|---|
 | **Bypass** (Ctrl+B) | The node is skipped, but everything upstream of it still runs -- bypass only removes the one bypassed node from the chain, not the cost behind it. |
 | **Mute** (Ctrl+M) | Prunes execution, but has to be applied to the specific node(s) you want removed, by hand, every time -- there's no single widget that removes a whole branch based on a condition. |
-| **H3Gate / H3GateAB / H3GateSwitch** | One widget, one place: toggling it removes the entire upstream branch from that run, with no per-node bookkeeping. |
+| **H3Gate / H3GateAB / H3GateRoute / H3GateSwitch** | One widget, one place: toggling it removes the entire upstream branch from that run, with no per-node bookkeeping. |
 
 ## A blocked branch can look like nothing happened
 
