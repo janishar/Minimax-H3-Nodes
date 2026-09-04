@@ -17,22 +17,36 @@ VERSION = 1
 EXT = ".minimaxh3latent"
 
 
+def tensor_fields(inner):
+    """Yield (label, tensor) for every tensor reachable from a latent's inner object.
+
+    Handles both shapes MiniMax H3's latent can arrive in: a torch.Tensor
+    (is_nested for real torch.nested tensors), and comfy.nested_tensor.NestedTensor,
+    whose ``.tensors`` attribute is a plain list of independent tensors (video
+    and audio, different rank) rather than a single tensor value -- a
+    dict-of-Tensor-values scan alone misses it.
+    """
+    if isinstance(inner, torch.Tensor):
+        if getattr(inner, "is_nested", False):
+            for i, part in enumerate(inner.unbind()):
+                yield f"tensors[{i}]", part
+        else:
+            yield "samples", inner
+        return
+
+    for key, value in getattr(inner, "__dict__", {}).items():
+        if isinstance(value, torch.Tensor):
+            yield key, value
+        elif isinstance(value, (list, tuple)) and value and all(isinstance(v, torch.Tensor) for v in value):
+            for i, part in enumerate(value):
+                yield f"{key}[{i}]", part
+
+
 def describe(samples):
     """Human-readable summary of a latent, for console logging."""
     inner = samples.get("samples") if isinstance(samples, dict) else samples
     name = type(inner).__name__
-
-    if isinstance(inner, torch.Tensor):
-        if getattr(inner, "is_nested", False):
-            shapes = [tuple(p.shape) for p in inner.unbind()]
-            return f"{name}(nested, parts={shapes})"
-        return f"{name}{tuple(inner.shape)} {inner.dtype}"
-
-    streams = [
-        f"{key}{tuple(value.shape)}"
-        for key, value in getattr(inner, "__dict__", {}).items()
-        if isinstance(value, torch.Tensor)
-    ]
+    streams = [f"{label}{tuple(t.shape)} {t.dtype}" for label, t in tensor_fields(inner)]
     return f"{name}({', '.join(streams) if streams else 'opaque'})"
 
 
